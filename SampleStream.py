@@ -39,7 +39,7 @@ def _main(args):
     
     index = 0
     while True:
-        if end != None and index >= end:
+        if end != None and index > end:
             break
         
         ret, frame = cap.read()

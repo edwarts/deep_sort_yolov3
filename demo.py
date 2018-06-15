@@ -90,12 +90,20 @@ def main(yolo):
             # save a frame
             out.write(frame)
             frame_index = frame_index + 1
+            '''
             list_file.write(str(frame_index)+' ')
             if len(boxs) != 0:
                 for i in range(0,len(boxs)):
                     list_file.write(str(boxs[i][0]) + ' '+str(boxs[i][1]) + ' '+str(boxs[i][2]) + ' '+str(boxs[i][3]) + ' ')
             list_file.write('\n')
-            
+            '''
+            list_file.write('frame:' + str(frame_index) + '\n')
+            for track in tracker.tracks:
+                if track.is_confirmed() and track.time_since_update > 1 :
+                    continue 
+                bbox = track.to_tlbr()
+                list_file.write('\ttrack:' + str(track.track_id) + ' ' + str(bbox[0]) + ' '+str(bbox[1]) + ' '+str(bbox[2]) + ' '+str(bbox[3]) +'\n')
+                
         fps  = ( fps + (1./(time.time()-t1)) ) / 2
         print("fps= %f"%(fps))
         
