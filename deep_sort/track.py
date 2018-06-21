@@ -40,7 +40,7 @@ class Track:
     feature : Optional[ndarray]
         Feature vector of the detection this track originates from. If not None,
         this feature is added to the `features` cache.
-
+    
     Attributes
     ----------
     mean : ndarray
@@ -60,7 +60,11 @@ class Track:
     features : List[ndarray]
         A cache of features. On each measurement update, the associated feature
         vector is added to this list.
-
+    
+    Modifications
+    ##########
+    hist_bboxes: list
+        List of past locations in bbox form.
     """
 
     def __init__(self, mean, covariance, track_id, n_init, max_age,
@@ -79,6 +83,10 @@ class Track:
 
         self._n_init = n_init
         self._max_age = max_age
+        
+        ########## Mod
+        self.hist_bboxes = []
+        self.hist_frames = []
 
     def to_tlwh(self):
         """Get current position in bounding box format `(top left x, top left y,
@@ -143,6 +151,10 @@ class Track:
         self.time_since_update = 0
         if self.state == TrackState.Tentative and self.hits >= self._n_init:
             self.state = TrackState.Confirmed
+        
+        ########## Mod
+        if self.state == TrackState.Confirmed:
+            self.hist_bboxes.append(self.to_tlbr())
 
     def mark_missed(self):
         """Mark this track as missed (no association at the current time step).

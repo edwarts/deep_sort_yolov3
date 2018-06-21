@@ -97,8 +97,8 @@ class YOLO(object):
         return_boxs = []
         for i, c in reversed(list(enumerate(out_classes))):
             predicted_class = self.class_names[c]
-            if predicted_class != 'car' and  predicted_class != 'bus' and  predicted_class != 'motorbike' and  predicted_class != 'person':
-                continue
+            #if predicted_class != 'car' and  predicted_class != 'bus' and  predicted_class != 'motorbike' and  predicted_class != 'person':
+            #    continue
             box = out_boxes[i]
            # score = out_scores[i]  
             x = int(box[1])  
@@ -111,7 +111,7 @@ class YOLO(object):
             if y < 0 :
                 h = h + y
                 y = 0 
-            return_boxs.append([x,y,w,h])
+            return_boxs.append([x,y,w,h, out_scores[i], out_classes[i]])
 
         return return_boxs
 
