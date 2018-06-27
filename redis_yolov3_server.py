@@ -16,7 +16,6 @@ import uuid
 import json
 import io
 from keras.preprocessing.image import img_to_array
-from keras.applications import imagenet_utils
 
 
 warnings.filterwarnings('ignore')
@@ -32,7 +31,6 @@ CLIENT_SLEEP = 0.25
 
 app = flask.Flask(__name__)
 db = redis.StrictRedis(host="localhost", port=6379, db=0)
-model = YOLO()
 
     
 def base64_encode_image(a):
@@ -42,10 +40,8 @@ def base64_encode_image(a):
 def base64_decode_image(a, dtype, shape):
     if sys.version_info.major == 3:
         a = bytes(a, encoding="utf-8")
-        
     a = np.frombuffer(base64.decodestring(a), dtype=dtype)
     a = a.reshape(shape)
-    
     return a
 
 
@@ -88,7 +84,24 @@ def predict():
     return flask.jsonify(data)
 
 
-def detect_process():
+@app.route('/explore/<cam_id>', methods=['GET'])
+def explore(cam_id):
+    data = {"success": False}
+
+    if flask.request.method == "GET":
+        try:
+            with open(cam_id) as jfile:
+                cam_data = json.load(jfile)
+                data["cam_data"] = cam_data
+                data["success"] = True
+        except Exception as e:
+            data["error"] = str(e)
+    return flask.jsonify(data)
+
+
+def detect_process():   
+    model = YOLO()
+    
     while True:
         queue = db.lrange(IMAGE_QUEUE, 0, BATCH_SIZE - 1)
         imageIDs = []
