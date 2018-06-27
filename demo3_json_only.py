@@ -8,7 +8,6 @@ import cv2 as cv
 import numpy as np
 from PIL import Image
 from yolo import YOLO
-from matplotlib import pyplot as plt
 import json
 import argparse
 
@@ -63,6 +62,12 @@ def video_to_json(cap_name, jfile):
     frame_idx = 0
     proc_fps = 0.0
     output_data = []
+    seconds=1
+    yolo_detect_avg=0.0
+    fps_avvg=0.0
+    feature_encode_avg=0.0
+    feature_encode_avg_25=0.0
+    yolo_detect_avg_25=0.0;
 
 
     while True:
@@ -72,12 +77,19 @@ def video_to_json(cap_name, jfile):
         t1 = time.time()
 
         image = Image.fromarray(frame)
+        t1_yolo_start = time.time()
         boxs = yolo.detect_image(image) # x,y,w,h, score, class
-
+        t2_yolo_end = time.time()
+        yolo_detect_avg+=t2_yolo_end-t1_yolo_start
+        yolo_detect_avg_25+=t2_yolo_end-t1_yolo_start
         # separate out score, class info from loc
         scores_classes = [box[-2:] for box in boxs]
         boxs = [box[0:4] for box in boxs]
+        f_t_start=time.time()
         features = encoder(frame,boxs)
+        f_t_end=time.time()
+        feature_encode_avg+=f_t_end-f_t_start
+        feature_encode_avg_25+=f_t_end-f_t_start
 
         # score to 1.0 here).
         detections = [Detection(bbox, 1.0, feature) for bbox, feature in zip(boxs, features)]
@@ -128,7 +140,8 @@ def video_to_json(cap_name, jfile):
         occupancy = box_area / lane_area
 
         proc_fps  = ( proc_fps + (1./(time.time()-t1)) ) / 2
-        #print("fps= %f"%(proc_fps))
+        # print("fps= %f"%(proc_fps))
+        fps_avvg+=proc_fps
 
         output_data.append({
             "data_event_name": "vehicle_detection",
@@ -142,11 +155,21 @@ def video_to_json(cap_name, jfile):
         })
 
         frame_idx += 1
-        if frame_idx >= 5:
-            break
+
+        if frame_idx%25==0:
+            print("THe {} second:".format(str(seconds)))
+            seconds+=1
+            print("Total frame {}".format(str(frame_idx)))
+            print("Average Speed for FPS is {}, for Yolo computing is {} second, for feature encoding is {} second"
+                  .format(fps_avvg/float(25.0),yolo_detect_avg_25/float(25.0),feature_encode_avg_25/float(25.0)))
+            yolo_detect_avg_25=0
+            feature_encode_avg_25=0
+        # if frame_idx >= 5:
+        #     break
 
     vcap.release()
-
+    print("Final Average Speed for FPS is {}, for Yolo computing is {} second, for feature encoding is {} second"
+        .format(fps_avvg/frame_idx, yolo_detect_avg / frame_idx, feature_encode_avg / frame_idx))
     with open(jfile, 'w') as jout:
         json.dump(output_data, jout)
         
