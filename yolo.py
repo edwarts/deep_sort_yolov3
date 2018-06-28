@@ -14,7 +14,7 @@ import numpy as np
 from keras import backend as K
 from keras.models import load_model
 from PIL import Image, ImageFont, ImageDraw
-
+from keras.utils import multi_gpu_model
 from yolo3.model import yolo_eval
 from yolo3.utils import letterbox_image
 
@@ -50,7 +50,9 @@ class YOLO(object):
     def generate(self):
         model_path = os.path.expanduser(self.model_path)
         assert model_path.endswith('.h5'), 'Keras model must be a .h5 file.'
-
+        # Try multiple gpu here
+        # self.yolo_model = multi_gpu_model(load_model(model_path, compile=False),2)
+        # single gpu
         self.yolo_model = load_model(model_path, compile=False)
         print('{} model, anchors, and classes loaded.'.format(model_path))
 
