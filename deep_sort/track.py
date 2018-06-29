@@ -155,6 +155,8 @@ class Track:
         ########## Mod
         if self.state == TrackState.Confirmed:
             self.hist_bboxes.append(self.to_tlbr())
+            
+        self.detection = detection
 
     def mark_missed(self):
         """Mark this track as missed (no association at the current time step).

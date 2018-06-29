@@ -136,3 +136,4 @@ class Tracker:
             mean, covariance, self._next_id, self.n_init, self.max_age,
             detection.feature))
         self._next_id += 1
+        self.tracks[-1].detection = detection
