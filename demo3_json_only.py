@@ -44,7 +44,7 @@ track_encoder = lambda track: {"vechicle_id": track.track_id,
                                "ymin": track.to_tlwh().tolist()[1],
                                "xmax": track.to_tlwh().tolist()[0] + track.to_tlwh().tolist()[2],
                                "ymax": track.to_tlwh().tolist()[1] + track.to_tlwh().tolist()[3]}
-samples_per_sec = 4 # no. of outputs per second
+samples_per_sec = 5 # no. of outputs per second
 
 # lane area extremes
 roi = [[200, 575], [130, 80], [260, 80], [767, 400], [767, 575], [200, 575]] # morning/AB07-1600H
