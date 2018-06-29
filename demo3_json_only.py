@@ -161,7 +161,6 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
             })
 
         frame_idx += 1
-        # if frame_idx > 30: break
 
         if frame_idx%25==0:
             print("THe {} second:".format(str(seconds)))
@@ -172,14 +171,14 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
             yolo_detect_avg_25=0
             feature_encode_avg_25=0
             fps_avg_25=0
-        # if frame_idx >= 5:
-        #     break
+            
+        #if frame_idx > 30: break
 
     vcap.release()
     t_final=time.time()
-    print("Final Average Speed for FPS is {}, for Yolo computing is {} second, for feature encoding is {} second"
-        .format(fps_avvg/frame_idx, yolo_detect_avg / frame_idx, feature_encode_avg / frame_idx))
-    print("The total time for this process is {}".format(t_final-initial))
+    #print("Final Average Speed for FPS is {}, for Yolo computing is {} second, for feature encoding is {} second"
+    #    .format(fps_avvg/frame_idx, yolo_detect_avg / frame_idx, feature_encode_avg / frame_idx))
+    #print("The total time for this process is {}".format(t_final-initial))
     with open(jfile, 'w') as jout:
         json.dump(output_data, jout)
 
