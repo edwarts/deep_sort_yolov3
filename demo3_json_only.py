@@ -1,5 +1,7 @@
 from __future__ import division, print_function, absolute_import
 
+from datetime import datetime
+import glob
 import os
 from timeit import time
 import warnings
@@ -21,14 +23,6 @@ from tools import generate_detections as gdet
 from deep_sort.detection import Detection as ddet
 
 warnings.filterwarnings('ignore')
-
-
-parser = argparse.ArgumentParser(description='Video to json')
-parser.add_argument('cap_name', help='Path to input video file.')
-parser.add_argument('jfile', help='Path to JSON output file.')
-parser.add_argument('cam_id', help='Camera id.')
-parser.add_argument('start_time', help='Start timestamp.')
-
 
 # Definition of the parameters
 max_cosine_distance = 0.3
@@ -64,20 +58,39 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
     proc_fps = 0.0
     output_data = []
 
+    seconds=1
+    yolo_detect_avg=0.0
+    fps_avvg=0.0
+    feature_encode_avg=0.0
+    feature_encode_avg_25=0.0
+    yolo_detect_avg_25=0.0
+    fps_avg_25=0.0
+
+    initial = time.time()
+    timestamp = int(start_time)
+
     while True:
         ret, frame = vcap.read()  # frame shape 640*480*3
+        print(ret)
         if ret != True:
             break
         t1 = time.time()
 
         image = Image.fromarray(frame)
+        t1_yolo_start = time.time()
         boxs = yolo.detect_image(image) # x,y,w,h, score, class
-
+        t2_yolo_end = time.time()
+        yolo_detect_avg+=t2_yolo_end-t1_yolo_start
+        yolo_detect_avg_25+=t2_yolo_end-t1_yolo_start
         # separate out score, class info from loc
         scores_classes = [box[-2:] for box in boxs]
         boxs = [box[0:4] for box in boxs]
+        f_t_start=time.time()
         features = encoder(frame,boxs)
-        
+        f_t_end=time.time()
+        feature_encode_avg+=f_t_end-f_t_start
+        feature_encode_avg_25+=f_t_end-f_t_start
+
         # score to 1.0 here).
         detections = [Detection(bbox, 1.0, feature) for bbox, feature in zip(boxs, features)]
 
@@ -131,7 +144,9 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
         occupancy = box_area / lane_area
     
         proc_fps  = ( proc_fps + (1./(time.time()-t1)) ) / 2
-        #print("fps= %f"%(proc_fps))
+        # print("fps= %f"%(proc_fps))
+        fps_avvg+=proc_fps
+        fps_avg_25+=proc_fps
 
         if frame_idx % fps in np.linspace(0, fps, samples_per_sec).astype(int)[:-1]:
             output_data.append({
@@ -146,23 +161,81 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
             })
 
         frame_idx += 1
-        if frame_idx > 30: break
+        # if frame_idx > 30: break
+
+        if frame_idx%25==0:
+            print("THe {} second:".format(str(seconds)))
+            seconds+=1
+            print("Total frame {}".format(str(frame_idx)))
+            print("Average Speed for FPS is {}, for Yolo computing is {} second, for feature encoding is {} second"
+                  .format(fps_avg_25/float(25.0),yolo_detect_avg_25/float(25.0),feature_encode_avg_25/float(25.0)))
+            yolo_detect_avg_25=0
+            feature_encode_avg_25=0
+            fps_avg_25=0
+        # if frame_idx >= 5:
+        #     break
 
     vcap.release()
-
+    t_final=time.time()
+    print("Final Average Speed for FPS is {}, for Yolo computing is {} second, for feature encoding is {} second"
+        .format(fps_avvg/frame_idx, yolo_detect_avg / frame_idx, feature_encode_avg / frame_idx))
+    print("The total time for this process is {}".format(t_final-initial))
     with open(jfile, 'w') as jout:
         json.dump(output_data, jout)
-        
 
-def _main(args):
-    cap_name = args.cap_name
-    jfile = args.jfile
-    cam_id = args.cam_id
-    start_time = args.start_time
-    video_to_json(cap_name, jfile, cam_id, start_time)
-    
-    
+def timestamp_convert(filename):
+    date = filename.split("-")[1]
+    time = filename.split("-")[2]
+    dt = date[0:4] + '-' + date[4:6] + '-' + date[6:8] + ' ' + time[0:2] + ':' + time[2:] + ':00'
+    ts = datetime.strptime(dt, "%Y-%m-%d %H:%M:%S").timestamp()
+    return ts
+
+def process_video_files_from_folder(root_folder,output_folder):
+    # full_categories = [x[0] for x in os.walk(root_folder) if x[0]][1:]
+    print(root_folder)
+    data = []
+    filenames=next(os.walk(root_folder))[2]
+
+    print(filenames)
+    for file_name in filenames:
+        first_part=file_name.split(".")[0]
+        cap_name = file_name
+        jfile = first_part + '.json'
+        cam_id = first_part.split("-")[0]
+        start_time = timestamp_convert(first_part)
+        print({'cap_name': cap_name, 'jfile_name': jfile, 'cam_id': cam_id,
+                 'timestamp': start_time})
+        # video_to_json(root_folder +'/'+cap_name, output_folder +'/'+jfile, cam_id, start_time)
+        data.append(
+                {'cap_name': cap_name, 'jfile_name': jfile, 'cam_id': cam_id,
+                 'timestamp': start_time})
+
+
+
+
 if __name__ == "__main__":
-    _main(parser.parse_args())
+
+    if len(sys.argv)==3:
+    #     process whole folder
+        print(sys.argv[1])
+        process_video_files_from_folder(sys.argv[1],sys.argv[2])
+    else :
+        parser = argparse.ArgumentParser(description='Video to json')
+        parser.add_argument('cap_name', help='Path to input video file.')
+        parser.add_argument('jfile', help='Path to JSON output file.')
+        parser.add_argument('cam_id', help='Camera id.')
+        parser.add_argument('start_time', help='Start timestamp.')
+        args=parser.parse_args()
+        root_folder='/home/boma/input_video/whole_folder/'
+        output_folder='/home/boma/output_data'
+        cap_name = root_folder+'/'+args.cap_name
+        jfile = output_folder+'/'+args.jfile
+        cam_id = args.cam_id
+        start_time = args.start_time
+        print(cap_name)
+        print(jfile)
+        print(cam_id)
+        print(start_time)
+        video_to_json(cap_name, jfile, cam_id, start_time)
     
     
