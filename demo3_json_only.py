@@ -50,6 +50,10 @@ track_encoder = lambda track: {"vechicle_id": track.track_id,
                                "ymin": track.to_tlwh().tolist()[1],
                                "xmax": track.to_tlwh().tolist()[0] + track.to_tlwh().tolist()[2],
                                "ymax": track.to_tlwh().tolist()[1] + track.to_tlwh().tolist()[3]}
+samples_per_sec = 4 # no. of outputs per second
+
+# lane area extremes
+roi = [[200, 575], [130, 80], [260, 80], [767, 400], [767, 575], [200, 575]] # morning/AB07-1600H
 
 def video_to_json(cap_name, jfile, cam_id, start_time):
     # video capture
@@ -59,7 +63,6 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
     frame_idx = 0
     proc_fps = 0.0
     output_data = []
-    timestamp = int(start_time)
 
     while True:
         ret, frame = vcap.read()  # frame shape 640*480*3
@@ -90,7 +93,12 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
                                                                                  'bus', 
                                                                                  'train', 
                                                                                  'truck']]
-
+        # filter detections with roi
+        detections = [det for det in detections if 0 < cv.pointPolygonTest(np.array(roi),
+                                                                           (det.to_xyah()[0],
+                                                                            det.to_xyah()[1]),
+                                                                           False)]
+        
         # Run non-maxima suppression.
         boxes = np.array([d.tlwh for d in detections])
         scores = np.array([d.confidence for d in detections])
@@ -104,18 +112,38 @@ def video_to_json(cap_name, jfile, cam_id, start_time):
         for track in tracker.tracks:
             if track.is_confirmed() and track.time_since_update > 1 :
                 continue
-
+            bbox = track.to_tlbr()
+            # update track speed in y direction, in pixels/seconds
+            if not hasattr(track, 'first_frame'):
+                track.first_frame = frame_idx
+                track.first_bbox = track.to_tlwh()
+            if frame_idx > track.first_frame + 1 * fps:
+                cur_bbox = track.to_tlwh()
+                cur_c_y = (cur_bbox[1] + cur_bbox[3] /2)
+                first_c_y = (track.first_bbox[1] + track.first_bbox[3] /2)
+                track.speed = (cur_c_y - first_c_y) / (frame_idx - track.first_frame) * fps
+    
+        # Add aggregated data
+        speeds = [abs(track.speed) for track in tracker.tracks if hasattr(track, 'speed')]
+        avg_spd = np.sum(speeds) / len(speeds) * 0.0005787 * 3600 # km/hr
+        lane_area = cv.contourArea(np.array(roi))
+        box_area = np.sum([det.tlwh[2] * det.tlwh[3] for det in detections])
+        occupancy = box_area / lane_area
+    
         proc_fps  = ( proc_fps + (1./(time.time()-t1)) ) / 2
         #print("fps= %f"%(proc_fps))
 
-        if frame_idx % fps == 0:
+        if frame_idx % fps in np.linspace(0, fps, samples_per_sec).astype(int)[:-1]:
             output_data.append({
                 "data_event_name": "vehicle_detection",
                 "camera_id": cam_id,
-                "time_stamp": timestamp,
+                "lane_id": 1,
+                "frame_idx": frame_idx,
+                "average_speed": avg_spd,
+                "lane_occupancy": occupancy,
+                "time_stamp": float(start_time) + frame_idx / fps,
                 "vehicles": [track_encoder(trk) for trk in tracker.tracks]
             })
-            timestamp += 1
 
         frame_idx += 1
         if frame_idx > 30: break
