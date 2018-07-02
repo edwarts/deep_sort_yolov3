@@ -36,7 +36,7 @@ def main(yolo):
 
     writeVideo_flag = True 
     
-    video_capture = cv2.VideoCapture("/home/boma/input_video/AB17-0830H.avi")
+    video_capture = cv2.VideoCapture("./AB17-0830H_out.mp4")
     
     if writeVideo_flag:
     # Define the codec and create VideoWriter object
@@ -44,7 +44,7 @@ def main(yolo):
         h = int(video_capture.get(4))
         fps = video_capture.get(cv2.CAP_PROP_FPS)
         fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-        out = cv2.VideoWriter('/home/boma/input_video/output.mp4', fourcc, fps, (w, h))
+        out = cv2.VideoWriter('output.mp4', fourcc, fps, (w, h))
         list_file = open('detection.txt', 'w')
         frame_index = -1 
         
