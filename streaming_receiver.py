@@ -72,17 +72,17 @@ def video_stream_to_json(cap_name, jfile, cam_id,start_time):
 
         # img=np.asarray(bytearray(each_message.value), dtype=np.uint8)
         # image = Image.fromarray(img)
-        # input_data=np.fromstring(each_message.value, np.uint8)
-        input_data=Image.frombytes(mode='I',size=(416, 416),data=each_message.value)
+        input_data=np.fromstring(each_message.value, np.uint8)
+        # input_data=Image.frombytes(mode='I',size=(416, 416),data=each_message.value)
         # input_data=cv.imdecode(each_message.value,'.jpeg')
         print(input_data)
         # image = cv.imdecode('.jpeg',input_data)
-        # image=Image.fromarray(input_data)
+        image=Image.fromarray(input_data)
         #
         # # img = cv.imdecode(nparr, cv.CV)
         # # image = Image.fromarray(each_message.value)
         # t1_yolo_start = time.time()
-        boxs = yolo.detect_image(input_data)  # x,y,w,h, score, class
+        boxs = yolo.detect_image(image)  # x,y,w,h, score, class
         # t2_yolo_end = time.time()
         # yolo_detect_avg += t2_yolo_end - t1_yolo_start
         # yolo_detect_avg_25 += t2_yolo_end - t1_yolo_start
@@ -90,7 +90,7 @@ def video_stream_to_json(cap_name, jfile, cam_id,start_time):
         scores_classes = [box[-2:] for box in boxs]
         boxs = [box[0:4] for box in boxs]
         # f_t_start = time.time()
-        features = encoder(input_data, boxs)
+        features = encoder(image, boxs)
         # f_t_end = time.time()
         # feature_encode_avg += f_t_end - f_t_start
         # feature_encode_avg_25 += f_t_end - f_t_start
