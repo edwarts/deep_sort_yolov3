@@ -4,6 +4,7 @@ import sys
 from kafka import SimpleProducer, KafkaClient,KafkaConsumer
 import cv2
 import time
+import numpy as np
 from PIL import Image
 kafka = KafkaClient('localhost:9092')
 producer = SimpleProducer(kafka)
@@ -27,9 +28,13 @@ def video_emitter(video):
             break
 
         # convert the image png
-        ret, jpeg = cv2.imencode('.png', image)
+        ret, jpeg = cv2.imencode('.jpeg', image)
         # Convert the image to bytes and send to kafka
-        producer.send_messages(topic, jpeg.tobytes())
+        out_put_emit_data=jpeg.tobytes()
+        print(len(np.array(jpeg)))
+        # out_put_emit_data = np.array(image).tobytes() too big error
+        print(out_put_emit_data)
+        producer.send_messages(topic,out_put_emit_data)
         # To reduce CPU usage create sleep time of 0.2sec
         time.sleep(0.2)
         frame_index+=1
