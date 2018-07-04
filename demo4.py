@@ -44,11 +44,11 @@ cam_lane_info = {
     'AB03': {'roi': [[0, 365], [0, 575], [767, 575], [767, 498], [438, 170], [241, 170], [0, 365]],
              'sec_length': 4.4 * 3,
              'sections': [575, 352, 268, 225, 170],
-             'speed_frames': 5},
+             'speed_frames': 10},
     'AB16': {'roi': [[192, 719], [629, 500], [939, 500], [821, 719], [192, 719]],
              'sec_length': 5,
              'sections': [719, 638, 578, 522, 489],
-             'speed_frames': 5}
+             'speed_frames': 10}
 }
 
 # json encoder for track
@@ -236,7 +236,10 @@ def video_to_json(cap_name, jfile, cam_id, start_time, vout_name='output.mp4', s
         proc_fps  = ( proc_fps + (1./(time.time()-t1)) ) / 2
         print("fps= %f"%(proc_fps))
 
-        print('{}: tracking {} vehicles, with average speed at {:.1f} km/h. {:.2f}% of the road surface is occupied.'.format(frame_idx, len(tracker.tracks), avg_spd, occupancy*100))  
+        print(('{}: tracking {} vehicles, ' 
+            + 'with average speed at {:.1f} km/h. ' 
+            + '{:.2f}% of the road surface is occupied. ' 
+            + 'LOS: {}').format(frame_idx, len(tracker.tracks), avg_spd, occupancy*100, los))  
         for t in tracker.tracks:
             if hasattr(t, 'speed'):
                 print('{}: {} {}'.format(t.track_id, t.speed, t.ends))
@@ -256,8 +259,15 @@ def video_to_json(cap_name, jfile, cam_id, start_time, vout_name='output.mp4', s
 
         if frame_idx >= 25:
             break
+    # end while
+    
+    with open(jfile, 'w') as jout:
+        json.dump(output_data, jout)
 
-# usage: python demo4.py './CAG/morning 0830/AB16-0830H (1).avi' 'AB16' 0 'output.json' 'output.mp4'
+    vcap.release()
+    vout.release()
+
+# usage: python demo4.py './CAG/morning 0830/AB16-0830H (1).avi' 'output.json' 'AB16' 0 'output.mp4'
 if __name__ == "__main__":
     # cap_name, jfile, vout_name, cam_id, start_time
     video_to_json(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], 5, True)
